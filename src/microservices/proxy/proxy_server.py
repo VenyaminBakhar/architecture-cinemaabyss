@@ -5,13 +5,12 @@ import random
 import json
 import os
 
-MONOLITH_BASE_URL        = os.getenv("MONOLITH_URL",        "http://monolith:8080")
-MOVIES_SERVICE_BASE_URL  = os.getenv("MOVIES_SERVICE_URL",  "http://movies-service:8081")
+MONOLITH_BASE_URL = os.getenv("MONOLITH_URL", "http://monolith:8080")
+MOVIES_SERVICE_BASE_URL = os.getenv("MOVIES_SERVICE_URL", "http://movies-service:8081")
 MOVIES_SERVICE_TRAFFIC_PERCENT = int(os.getenv("MOVIES_MIGRATION_PERCENT", "50"))
 GRADUAL_MIGRATION = os.getenv("GRADUAL_MIGRATION", "false").lower() == "true"
 
 class StranglerFigProxyHandler(http.server.BaseHTTPRequestHandler):
-
     def _resolve_target(self, path: str) -> str:
         if GRADUAL_MIGRATION and path.startswith("/api/movies"):
             if random.randint(1, 100) <= MOVIES_SERVICE_TRAFFIC_PERCENT:
@@ -53,23 +52,23 @@ class StranglerFigProxyHandler(http.server.BaseHTTPRequestHandler):
 
         except urllib.error.URLError as e:
             body = json.dumps({
-                "error":   "Bad Gateway",
+                "error": "Bad Gateway",
                 "message": f"Целевой сервис недоступен: {e.reason}",
-                "target":  target_url,
+                "target": target_url,
             }).encode("utf-8")
             self.send_response(502)
-            self.send_header("Content-Type",   "application/json; charset=utf-8")
+            self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
 
         except Exception as e:
             body = json.dumps({
-                "error":   "Internal Server Error",
+                "error": "Internal Server Error",
                 "message": str(e),
             }).encode("utf-8")
             self.send_response(500)
-            self.send_header("Content-Type",   "application/json; charset=utf-8")
+            self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -86,7 +85,8 @@ class StranglerFigProxyHandler(http.server.BaseHTTPRequestHandler):
         pass
 
 def main():
-    server = http.server.HTTPServer(("0.0.0.0", 8000), StranglerFigProxyHandler)
+    port = int(os.environ.get('PORT', 8000))
+    server = http.server.HTTPServer(("0.0.0.0", port), StranglerFigProxyHandler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

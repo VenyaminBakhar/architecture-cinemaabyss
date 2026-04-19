@@ -1,0 +1,111 @@
+@startuml
+title "Кинобездна" Container Diagram
+
+top to bottom direction
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+Person(user, "Пользователь", "Пользователь онлайн-кинотеатра Кинобездна")
+
+System_Ext(CDN, "CDN", "Кеширует и отдаёт видеосегменты пользователям по signed URLs")
+System_Ext(extPaymentSystem, "Внешняя платежная система", "API внешней платежной системы")
+System_Ext(S3, "S3", "Хранилище видеоконтента")
+System_Ext(extOnlineCinema, "Онлайн-кинотеатры", "API партнёрских онлайн-кинотеатров")
+System_Ext(extRecommendEngine, "Внешняя рекомендательная система", "Система формирования рекомендательных подборок")
+
+Container_Boundary(OnlineCinemaSystem, "Онлайн-кинотеатр Кинобездна") {
+
+    Container(ClientApps, "Client Apps", "Web/Mobile/TV", "Предоставляет доступ пользователю к системе через веб-браузер, мобильный клиент, ТВ-клиент")
+
+    Container(ApiGateway, "API Gateway", "Java, Spring", "Единая точка входа API: роутинг, аутентификация, rate limiting")
+
+    Container(AuthService, "AuthService", "Java, Spring", "Сервис аутентификации: логин, регистрация, токены, сессии")
+    ContainerDb(AuthDb, "Auth Database", "PostgreSQL", "Хранит логины, хеши паролей, refresh-токены")
+
+    Container(UserService, "UserService", "Java, Spring", "Сервис управления профилем и настройками пользователей")
+    ContainerDb(UserServiceDb, "User Database", "PostgreSQL", "Хранит данные профиля: имя, аватар, настройки, предпочтения")
+
+    Container(SubscriptionService, "SubscriptionService", "Java, Spring", "Сервис управления подписками пользователей")
+    ContainerDb(SubscriptionServiceDb, "Subscription Database", "PostgreSQL", "Хранит данные подписок")
+
+    Container(PaymentService, "PaymentService", "Java, Spring", "Сервис интеграции с платежными системами")
+    ContainerDb(PaymentServiceDb, "Payment Database", "PostgreSQL", "Хранит данные транзакций")
+
+    Container(MoviesService, "MoviesService", "Java, Spring", "Сервис метаданных о фильмах: описания, жанры, актёры, пути к контенту")
+    ContainerDb(MoviesServiceDb, "Movies Database", "PostgreSQL", "Хранит метаданные фильмов и пути к видеофайлам в S3")
+
+    Container(SearchService, "SearchService", "Java, Spring", "Сервис полнотекстового поиска фильмов по названию, описанию, жанру")
+    ContainerDb(SearchServiceDb, "Search Index", "ElasticSearch", "Хранит индексированные метаданные фильмов")
+
+    Container(ReviewService, "ReviewService", "Java, Spring", "Сервис рейтингов, отзывов и лайков")
+    ContainerDb(ReviewServiceDb, "Review Database", "PostgreSQL", "Хранит оценки, отзывы, лайки пользователей")
+
+    Container(RecommendationService, "RecommendationService", "Java, Spring", "Сервис формирования и выдачи рекомендаций")
+    ContainerDb(RecommendationServiceDb, "Recommendation Database", "PostgreSQL", "Хранит рекомендательные подборки для пользователей")
+
+    Container(StreamService, "StreamService", "Java, Spring", "Проверяет права доступа, определяет источник контента, генерирует signed URLs")
+
+    Container(WatchHistoryService, "WatchHistoryService", "Java, Spring", "Сервис по управлению историей просмотров пользователей")
+    ContainerDb(WatchHistoryDb, "WatchHistory Database", "PostgreSQL", "Хранит историю просмотров и текущие позиции воспроизведения")
+
+    Container(HarvestService, "MoviesHarvestService", "Java, Spring", "Сервис сбора метаданных о фильмах из партнёрских кинотеатров")
+
+    Container(NotificationService, "NotificationService", "Java, Spring", "Сервис push уведомлений")
+
+    Container(Queue, "Message Broker", "Kafka", "Асинхронная шина данных")
+}
+
+Rel(user, ClientApps, "Использует")
+
+Rel(ClientApps, ApiGateway, "API-запросы")
+
+Rel(ClientApps, CDN, "Видеосегменты по signed URL")
+
+Rel(CDN, S3, "Загрузка видеосегментов")
+
+Rel(ApiGateway, AuthService, "Аутентификация")
+Rel(ApiGateway, UserService, "Управление профилем и настройками")
+Rel(ApiGateway, SubscriptionService, "Управление подписками")
+Rel(ApiGateway, MoviesService, "Получение метаданных фильмов")
+Rel(ApiGateway, SearchService, "Поиск фильмов")
+Rel(ApiGateway, ReviewService, "Управление рейтингами и отзывами")
+Rel(ApiGateway, RecommendationService, "Получение рекомендаций")
+Rel(ApiGateway, StreamService, "Получение signedURL видеосегментов")
+Rel(ApiGateway, WatchHistoryService, "Управление историей просмотров")
+
+Rel(StreamService, SubscriptionService, "Проверка прав доступа")
+Rel(StreamService, MoviesService, "Получение пути к контенту")
+
+Rel(AuthService, AuthDb, "Пишет/Читает")
+Rel(UserService, UserServiceDb, "Пишет/Читает")
+Rel(SubscriptionService, SubscriptionServiceDb, "Пишет/Читает")
+Rel(PaymentService, PaymentServiceDb, "Пишет/Читает")
+Rel(MoviesService, MoviesServiceDb, "Пишет/Читает")
+Rel(SearchService, SearchServiceDb, "Пишет/Читает")
+Rel(ReviewService, ReviewServiceDb, "Пишет/Читает")
+Rel(RecommendationService, RecommendationServiceDb, "Пишет/Читает")
+Rel(WatchHistoryService, WatchHistoryDb, "Пишет/Читает")
+
+Rel(SubscriptionService, Queue, "Публикует команду на оплату")
+Rel(PaymentService, Queue, "Читает команды на оплату / Публикует результат")
+Rel(SubscriptionService, Queue, "Читает результат оплаты и управляет статусом подписок")
+Rel(PaymentService, extPaymentSystem, "Проводит платёж")
+
+Rel(MoviesService, Queue, "Публикует команды на индексацию")
+Rel(SearchService, Queue, "Читает команды на индексацию")
+
+Rel(HarvestService, extOnlineCinema, "Собирает метаданные фильмов")
+Rel(HarvestService, Queue, "Публикует метаданные для обработки")
+Rel(MoviesService, Queue, "Читает команды на сохранение метаданных")
+
+Rel(ReviewService, Queue, "Публикует события оценок и отзывов")
+Rel(WatchHistoryService, Queue, "Публикует события просмотров")
+
+Rel(Queue, extRecommendEngine, "Данные активности: просмотры, оценки, поиск")
+Rel(extRecommendEngine, Queue, "Готовые рекомендательные подборки")
+Rel(RecommendationService, Queue, "Читает готовые рекомендации")
+
+Rel(NotificationService, Queue, "Читает события: новый фильм, истечение подписки, новые рекомендации")
+Rel(NotificationService, ClientApps, "Push-уведомления")
+
+@enduml

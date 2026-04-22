@@ -5,7 +5,7 @@ global:
 
 # Image pull secrets
 imagePullSecrets:
-  dockerconfigjson: ewoJImF1dGhzIjogewoJCSJnaGNyLmlvIjogewoJCQkiYXV0aCI6
+  dockerconfigjson: ewogICAgICAgICJhdXRocyI6IHsKICAgICAgICAgICAgICAgICJnaGNyLmlvIjogewogICAgICAgICAgICAgICAgICAgICAgICJhdXRoIjogIlZtVnVlV0Z0YVc1Q1lXdG9ZWEk2WjJsMGFIVmlYM0JoZEY4eE1VRkhTVGRJV2trd01reGliMUprVFZsRmNHOXhYMlpIVEhSRFZHdEpSRUpLVlZCdlJWZENjMGs0VEd4SFZETnZZMmhHTWxKUlIzbFJjR2h2V0hKVGVteE9ORTFOVnpSQlJsSjFaVVJXT0hscSIKICAgICAgICAgICAgICAgIH0KICAgICAgICB9Cn0K
 # Database configuration
 database:
   host: postgres
@@ -33,7 +33,7 @@ database:
 monolith:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/monolith
+    repository: ghcr.io/venyaminbakhar/architecture-cinemaabyss/monolith
     tag: latest
     pullPolicy: Always
   replicas: 1
@@ -53,7 +53,7 @@ monolith:
 proxyService:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/proxy-service
+    repository: ghcr.io/venyaminbakhar/architecture-cinemaabyss/proxy-service
     tag: latest
     pullPolicy: Always
   replicas: 1
@@ -65,7 +65,7 @@ proxyService:
       cpu: 100m
       memory: 128Mi
   service:
-    port: 80
+    port: 8000
     targetPort: 8000
     type: ClusterIP
 
@@ -73,7 +73,7 @@ proxyService:
 moviesService:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/movies-service
+    repository: ghcr.io/venyaminbakhar/architecture-cinemaabyss/movies-service
     tag: latest
     pullPolicy: Always
   replicas: 1
@@ -93,7 +93,7 @@ moviesService:
 eventsService:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/events-service
+    repository: ghcr.io/venyaminbakhar/architecture-cinemaabyss/events-service
     tag: latest
     pullPolicy: Always
   replicas: 1
@@ -169,14 +169,14 @@ ingress:
   hosts:
     - host: cinemaabyss.example.com
       paths:
-        - path: /
-          pathType: Prefix
-          service: proxy-service
-          port: 80
         - path: /api/events
           pathType: Prefix
           service: events-service
           port: 8082
+        - path: /
+          pathType: Prefix
+          service: proxy-service
+          port: 8000
 
 # Application configuration
 config:
